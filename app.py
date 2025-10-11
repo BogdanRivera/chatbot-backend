@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel 
+from transformers import pipeline
+
+pipe = pipeline("text-generation", model="bogdanrivera/legal_oaxaca_llama3-1_8B_unsloth")
 
 app = FastAPI()
 
@@ -17,23 +20,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. Definimos la "forma" que tendrá el mensaje que nos envíe el frontend
+
 class ChatMessage(BaseModel):
     message: str
 
-# Mantenemos nuestro endpoint de prueba
+
 @app.get("/api/message")
 async def get_message():
     return {"message": "¡Hola desde el backend de FastAPI!"}
 
-# 3. Creamos nuestro nuevo endpoint para el chat
 @app.post("/api/chat")
 async def chat(request: ChatMessage):
-    # Por ahora, la lógica es simple:
-    # Recibimos el mensaje del usuario y devolvemos una respuesta fija.
     user_message = request.message
-    print(f"Mensaje recibido: {user_message}") # Útil para ver en la terminal del backend
-
-    bot_response = "He recibido tu mensaje. Próximamente tendré una respuesta más inteligente."
+    print(f"Mensaje recibido: {user_message}") 
     
+    messages = [
+        {"role": "user", "content": user_message},
+    ]
+
+
+    raw_output = pipe(messages, max_new_tokens=256, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+    
+    bot_response = ""
+
+
+    try:
+        last_message = raw_output[0]['generated_text'][-1]
+        if last_message['role'] == 'assistant':
+            bot_response = last_message['content']
+        else:
+            bot_response = "El modelo no generó una respuesta de asistente."
+            
+    except (IndexError, KeyError, TypeError) as e:
+        print(f"Error al procesar la respuesta del modelo: {e}")
+        bot_response = "Hubo un error al procesar la respuesta del modelo."
+
+    print(f"Respuesta del bot: {bot_response}")
     return {"response": bot_response}
