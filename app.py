@@ -39,7 +39,7 @@ async def chat(request: ChatMessage):
     ]
 
 
-    raw_output = pipe(messages, max_new_tokens=256, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+    raw_output = pipe(messages, max_new_tokens=1024, do_sample=True, temperature=0.5, top_k=70, top_p=0.95)
     
     bot_response = ""
 
